@@ -17,12 +17,14 @@ def identify_colors(mask, color_name):
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if contours:
         for contour in contours:
-            print(color_name+"Contour Area:", cv2.contourArea(contour))
+            print(f"{color_name} Contour Area:", cv2.contourArea(contour))
 
         largest_contour = max(contours, key=cv2.contourArea)  # 找最大輪廓
-        if cv2.contourArea(largest_contour) > 500:  # 過濾雜訊
-            return color_name
-    return None
+        largest_area = cv2.contourArea(largest_contour)  # 計算最大輪廓的面積
+        if largest_area > 500:  # 過濾雜訊
+            # print(f"{color_name} largest_area", largest_area)
+            return color_name, largest_area
+    return None, 0
 
 # split_box
 def split_box(image,c,conf):
@@ -31,56 +33,48 @@ def split_box(image,c,conf):
     # 轉換為 HSV 色彩空間
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    # 紅燈範圍（包含兩個範圍）
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 100, 100])
-    upper_red2 = np.array([180, 255, 255])
-
-    # 黃燈範圍
-    lower_yellow = np.array([12, 100, 20])
-    upper_yellow = np.array([35, 255, 255])
-
-    # 綠燈範圍
+    # 定義紅、黃、綠燈的 HSV 範圍
+    lower_red1, upper_red1 = np.array([0, 100, 100]), np.array([10, 255, 255])
+    lower_red2, upper_red2 = np.array([160, 100, 100]), np.array([180, 255, 255])
+    lower_yellow, upper_yellow = np.array([12, 100, 20]), np.array([35, 255, 255])
+    lower_green, upper_green = np.array([50, 140, 90]), np.array([90, 255, 255])
     # lower_green = np.array([40, 100, 100])
     # upper_green = np.array([90, 255, 255])
-    lower_green = np.array([50, 140, 90])
-    upper_green = np.array([90, 255, 255])
 
-    # 建立紅色遮罩（兩個範圍）
-    mask_red1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask_red2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask_red = mask_red1 + mask_red2
-
-    # 建立黃色遮罩
+    # 建立遮罩（包含兩個範圍）
+    mask_red = cv2.inRange(hsv, lower_red1, upper_red1) + cv2.inRange(hsv, lower_red2, upper_red2)
     mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
-
-    # 建立綠色遮罩
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
-
-
 
     # 判斷目前燈號
     light_color = "---"
     light_BGR = (255, 255, 255)
-    if identify_colors(mask_red, "紅燈"):
-        light_color = "red"
-        light_BGR = (0,0,255)
-    elif identify_colors(mask_yellow, "黃燈"):
-        light_color = "yellow"
-        light_BGR = (0,255,255)
-    elif identify_colors(mask_green, "綠燈"):
-        light_color = "green"
-        light_BGR = (0,255,0)
-    #print(f"目前的紅綠燈狀態：{light_color}")
-    
-    # 在上方添加 ? 像素的黑色區域
+    largest_area = 0
+    # 先嘗試識別不同燈號
+    red_result = identify_colors(mask_red, "Red")
+    yellow_result = identify_colors(mask_yellow, "Yellow")
+    green_result = identify_colors(mask_green, "Green")
+
+    if red_result[0]:  # 檢查是否識別到紅燈
+        light_color = red_result[0]
+        light_BGR = (0, 0, 255)
+        largest_area = red_result[1]
+    elif yellow_result[0]:  # 檢查是否識別到黃燈
+        light_color = yellow_result[0]
+        light_BGR = (0, 255, 255)
+        largest_area = yellow_result[1]
+    elif green_result[0]:  # 檢查是否識別到綠燈
+        light_color = green_result[0]
+        light_BGR = (0, 255, 0)
+        largest_area = green_result[1]
+
+    # 在上方添加黑色區域
     border_top = 40
     image = cv2.copyMakeBorder(image, border_top, 0, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
-    
-    # 顯示原始影像
-    cv2.putText(image, f"{light_color}", (0, 15),cv2.FONT_HERSHEY_SIMPLEX, 0.6, light_BGR, 2)
-    cv2.putText(image, f"{conf}", (0, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.5, light_BGR, 2)
+
+    # 顯示結果
+    cv2.putText(image, f"{light_color}", (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, light_BGR, 2)
+    cv2.putText(image, f"{conf}, {largest_area}", (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, light_BGR, 2)
     cv2.imshow(f"{windownumber}", image)
     
 # yoloVideo
@@ -96,7 +90,7 @@ def video(image):
     for box in result[0].boxes:
         cls = int(box.cls)  # 取得類別索引
         conf = float(box.conf)  # 取得該物件的信心值
-        if cls == traffic_light_class and conf > 0.4:  # 只處理 traffic light
+        if cls == traffic_light_class and conf > 0.65:  # 只處理 traffic light
             if conf>conflist[0]:
                 conflist[2]=conflist[1]
                 conflist[1]=conflist[0]
@@ -137,27 +131,34 @@ target_classes = [0, 1, 2, 3, 5, 7, 9]
 # 開啟影片
 video_path = "video/2025-01-19_11-47-10-front - Trim.mp4"
 # video_path = "video/color_changed.mp4"
-#video_path = "video/arrow_test.mp4"
+# video_path = "video/arrow_test.mp4"
 cap = cv2.VideoCapture(video_path)
 
 frame_count = 0  # 計數器
 paused = False  # 設定一個變數來追蹤是否暫停
 while cap.isOpened():
-    success, frame = cap.read()
-    if not success:
-        break
-    
     if not paused:
+        success, frame = cap.read()
+        if not success:
+            break
+
         frame_count += 1
         if frame_count % 3 == 0:  # 每 3 幀才進行 YOLO 偵測
             video(frame)
 
     key = cv2.waitKey(30) & 0xFF  # 只執行一次
-    
+
     if key == 27:  # 按 'ESC' 退出
         break
     elif key == 32:  # 按 '空白鍵' 暫停/繼續
         paused = not paused
+        while paused:  # 停留在這裡，直到使用者按下空白鍵繼續
+            key = cv2.waitKey(30) & 0xFF
+            if key == 32:
+                paused = False
+            elif key == 27:
+                paused = False
+                break
 
 cap.release()
 cv2.destroyAllWindows()
