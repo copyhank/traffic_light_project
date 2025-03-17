@@ -1,4 +1,6 @@
-train: dataset/images/train
-val: dataset/images/val
+train: C:/Users/Hankz/OneDrive/code/coding/yolo/datasets/dataset/images/train
+val: C:/Users/Hankz/OneDrive/code/coding/yolo/datasets/dataset/images/val
+#train: images/train
+#val: images/val
 nc: 1  # 只訓練一類場景
 names: ["UR"]
