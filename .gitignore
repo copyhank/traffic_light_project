@@ -5,4 +5,5 @@ test/
 .credentials/
 myenv/
 RTY2pic
+datasets/
 *.pt
