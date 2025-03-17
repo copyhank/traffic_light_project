@@ -5,7 +5,6 @@ import numpy as np
 window_width = 1280
 window_height = 720
 
-
 # 設定視窗名稱和可調整大小的屬性
 #cv2.namedWindow("YOLO Detection", cv2.WINDOW_NORMAL)
 #cv2.resizeWindow("YOLO Detection", target_width, target_height)
@@ -26,8 +25,8 @@ def identify_colors(mask, color_name):
             return color_name, largest_area
     return None, 0
 
-# split_box
-def split_box(image,c,conf):
+# find_traffic_light
+def find_traffic_light(image,c,conf):
     windownumber=f"traffic_light_{c+1}"
 
     # 轉換為 HSV 色彩空間
@@ -71,11 +70,14 @@ def split_box(image,c,conf):
     # 在上方添加黑色區域
     border_top = 40
     image = cv2.copyMakeBorder(image, border_top, 0, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+    image = cv2.copyMakeBorder(image, 0, 0, 0, 50, cv2.BORDER_CONSTANT, value=(0, 0, 0))
 
     # 顯示結果
     cv2.putText(image, f"{light_color}", (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, light_BGR, 2)
     cv2.putText(image, f"{conf}, {largest_area}", (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, light_BGR, 2)
     cv2.imshow(f"{windownumber}", image)
+    cv2.moveWindow(f"{windownumber}",c*300+100,100)
+
     
 # yoloVideo
 def video(image):
@@ -91,7 +93,7 @@ def video(image):
         cls = int(box.cls)  # 取得類別索引
         conf = float(box.conf)  # 取得該物件的信心值
         if cls == traffic_light_class and conf > 0.65:  # 只處理 traffic light
-            if conf>conflist[0]:
+            if conf>conflist[0]: # 找信心值前三大
                 conflist[2]=conflist[1]
                 conflist[1]=conflist[0]
                 conflist[0]=conf
@@ -112,14 +114,13 @@ def video(image):
         if(conf!=-1):
             box=boxlist[c]
             x1, y1, x2, y2 = map(int, box.xyxy[0])  # 取得邊界框座標
-            split_box(image[y1:y2, x1:x2],c,round(conflist[c],2))  # 截圖紅綠燈
+            find_traffic_light(image[y1:y2, x1:x2],c,round(conflist[c],2))  # 截圖紅綠燈
             traffic_light_count += 1
-
-            # 儲存圖片
-            #save_path = f"output/traffic_light_{traffic_light_count}.jpg"
-            #cv2.imwrite(save_path, cropped_img)
-            #print((cropped_img))
-        c+=1    
+        else:
+            if cv2.getWindowProperty(f"traffic_light_{c+1}",cv2.WND_PROP_VISIBLE)==1:
+                cv2.destroyWindow(f"traffic_light_{c+1}")
+        c+=1
+           
     print(f"總共擷取 {traffic_light_count} 個紅綠燈。")
 
 
