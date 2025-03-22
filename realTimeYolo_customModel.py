@@ -10,14 +10,20 @@ cv2.namedWindow("YOLO Detection", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("YOLO Detection", target_width, target_height)
 
 # 載入模型
-model = YOLO("best_UR_FULL_PIC.pt")
+#model = YOLO("best_UR_FULL_PIC.pt")
+model = YOLO("bestLargeArrowE36.pt")
+#model = YOLO("lastLargeArrowExtended.pt")
 #model = YOLO("yolov8l.pt")
-target_classes = [0]  # 要偵測的類別
+#model = YOLO("best_ARROW.pt")
+model.to("cuda")  # 使用 GPU 進行偵測(單次指令，變更為 CPU 只需將 "cuda" 改為 "cpu")
+target_classes = [0,1,2,3,4,5,6,7,8]  # 要偵測的類別
 print(model.names)
 
 # 開啟影片
+#video_path = "video/arrow_test.mp4"
+
 #video_path = "video/2025-01-19_11-47-10-front - Trim.mp4"
-video_path = "video/arrow_test.mp4"
+video_path = "video/2025-01-29_11-16-31-front_TRIM.mp4" #U test
 cap = cv2.VideoCapture(video_path)
 
 frame_count = 0  # 計數器
