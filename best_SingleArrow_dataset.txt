@@ -1,0 +1,4 @@
+Train14的參數(89.3分)
+yolo task=classify mode=train model=yolo11n-cls.pt data=. epochs=200 imgsz=128 device=cuda
+Train12的參數(96.5分)
+yolo task=classify mode=train model=yolo11s-cls.pt data=. epochs=200 imgsz=112 device=cuda
